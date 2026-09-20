@@ -64,6 +64,7 @@
     "server.ts",
     "host.ts",
     "app.tsx",
+    "scripts",
     "skills",
     "README.md",
     "LICENSE",

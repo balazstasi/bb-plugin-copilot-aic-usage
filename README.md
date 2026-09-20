@@ -11,14 +11,33 @@ Independent community plugin. Not affiliated with or endorsed by GitHub, Microso
 - GitHub Copilot CLI telemetry compatible with **1.0.86**, launched by BB as `copilot --acp`.
 - Copilot and the BB environment’s host daemon must use the same operating-system account/home directory on that host. The BB server may be on another machine.
 
+### One-command local installation
+
+Copy or clone this complete repository onto the Mac that runs BB. From the repository root, run:
+
+```sh
+./scripts/install-local.sh
+```
+
+If the executable bit was lost while copying the folder, use:
+
+```sh
+bash scripts/install-local.sh
+```
+
+The script checks its prerequisites, installs dependencies reproducibly, type-checks and tests the plugin, builds all BB artifacts, and then installs it from the repository's absolute local path. It is safe to run again: an installation from the same checkout is rebuilt, enabled, and reloaded; an existing installation from a different local checkout is moved to this one using BB's normal installation command.
+
+To delegate installation to an agent on another Mac, give it the repository and say: **“Read `README.md` and follow the one-command local installation instructions.”** The script does not send a Copilot prompt, alter Copilot telemetry, or require organization-admin access.
+
+Manual equivalent:
+
 ```sh
 cd bb-plugin-copilot-aic-usage
 npm ci
-bb plugin types .
 npm run typecheck
 npm test
-bb plugin build .
-bb plugin install . --yes
+npm run build
+bb plugin install "path:$PWD" --yes
 ```
 
 The local install points at this checkout. Open an existing Copilot ACP thread: no extra credentials, organization permissions, model request, or Copilot restart are required. A thread with no recorded Copilot identity/checkpoint shows an unavailable/pending state.
@@ -92,6 +111,7 @@ The test suite runs the SDK public-import scanner and the official backend, host
 - `src/model.ts`, `src/contract.ts`: strict wire schemas and typed contracts.
 - `src/telemetry.ts`, `src/identity.ts`: privacy projection, precision, exact selection.
 - `app.tsx`, `src/UsageBadge.tsx`: supported header slot and hover/focus UI.
+- `scripts/install-local.sh`: idempotent local build, verification, install, and reload workflow.
 - `tests/`: synthetic functional/privacy/lifecycle tests; `skills/`: operating guidance.
 
 ## Publishing later
