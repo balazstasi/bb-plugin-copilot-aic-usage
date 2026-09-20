@@ -4,21 +4,21 @@ Verified locally on 2026-09-20 with BB **0.43.3**, Plugin SDK **0.4.104**, Node 
 
 ## Commands and results
 
-| Check | Result |
-| --- | --- |
-| `bb plugin new copilot-aic-usage` | Scaffold created; example todo implementation removed. |
-| `bb plugin types .` | Exact SDK 0.4.104 and host-shim declarations already current. |
-| `npm ci` | Successful reproducible install using the committed lockfile; zero reported vulnerabilities. |
-| `npm run typecheck` | Passed, including host/server/frontend and tests. |
-| `npm test` | **42 tests passed in 5 files**, Vitest 4.1.11. |
-| SDK `experimental_scanPublicSdkOnly` | Passed inside the test suite: zero violations and zero private dependencies. |
-| `npm run format:check` | Passed for all TypeScript and TSX files. |
-| `bb plugin build .` | Passed: server, app/CSS and host bundles plus all metadata and server/host maps. |
-| Production-only temporary checkout: `npm ci --omit=dev --omit=optional`, then `bb plugin build <temporary-directory>` | Both passed. Only the runtime Zod dependency was installed. Temporary artifacts were removed. |
-| `bb plugin install . --yes` | Installed local path source; status `running`. |
-| `bb plugin reload copilot-aic-usage` | Passed; status `running`. |
-| `npm pack --dry-run --json` | Confirmed manifest, sources, documentation, skill, license, and built artifacts; no tests, node_modules, secrets, or real telemetry. |
-| `git diff --cached --check` | Passed before initial commit. |
+| Check                                                                                                                 | Result                                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `bb plugin new copilot-aic-usage`                                                                                     | Scaffold created; example todo implementation removed.                                                                               |
+| `bb plugin types .`                                                                                                   | Exact SDK 0.4.104 and host-shim declarations already current.                                                                        |
+| `npm ci`                                                                                                              | Successful reproducible install using the committed lockfile; zero reported vulnerabilities.                                         |
+| `npm run typecheck`                                                                                                   | Passed, including host/server/frontend and tests.                                                                                    |
+| `npm test`                                                                                                            | **49 tests passed in 5 files**, Vitest 4.1.11.                                                                                       |
+| SDK `experimental_scanPublicSdkOnly`                                                                                  | Passed inside the test suite: zero violations and zero private dependencies.                                                         |
+| `npm run format:check`                                                                                                | Passed for all TypeScript and TSX files.                                                                                             |
+| `bb plugin build .`                                                                                                   | Passed: server, app/CSS and host bundles plus all metadata and server/host maps.                                                     |
+| Production-only temporary checkout: `npm ci --omit=dev --omit=optional`, then `bb plugin build <temporary-directory>` | Both passed. Only the runtime Zod dependency was installed. Temporary artifacts were removed.                                        |
+| `bb plugin install . --yes`                                                                                           | Installed local path source; status `running`.                                                                                       |
+| `bb plugin reload copilot-aic-usage`                                                                                  | Passed; status `running`.                                                                                                            |
+| `npm pack --dry-run --json`                                                                                           | Confirmed manifest, sources, documentation, skill, license, and built artifacts; no tests, node_modules, secrets, or real telemetry. |
+| `git diff --cached --check`                                                                                           | Passed before initial commit.                                                                                                        |
 
 An initial npm 10 dependency resolution attempt crashed while updating Vitest’s optional peers. Resolving once with `npx --yes npm@11 install` produced the lockfile; a subsequent ordinary npm 10 `npm ci` succeeded. No `legacy-peer-deps` or forced resolution is required. The final dependency audit reported zero vulnerabilities.
 
@@ -32,13 +32,13 @@ An initial npm 10 dependency resolution attempt crashed while updating Vitest’
 - Remote environment-host RPC routing and server-side identity-event filtering; unsupported/unknown providers hidden; bounded host errors.
 - Host/session-scoped realtime invalidations and rejection of obsolete or wrong-host signals.
 - Concurrent sessions, rapid identity changes, filesystem watcher notifications, actual temporary-file appends, reconciliation after watcher failure, expiry and worker-lease cleanup.
-- Supported header-slot registration, exact visible count, hover/focus/Escape details, unavailable/stale/unsupported states, scoped realtime refetch and reconnect state.
+- Supported header-slot registration, half-up natural-number display, hover/focus/Escape details, unavailable/stale/unsupported states, scoped realtime refetch and reconnect state.
 
 ## Live checks
 
 The real BB thread’s latest public `thread/identity` value matched an existing Copilot session directory. The installed plugin’s real server RPC invoked its bundled host entry and returned the expected whitelisted scalar usage and quota fields.
 
-In a temporary ego-browser task, the running BB frontend displayed the exact cumulative AIC value. Hovering showed session premium requests, monthly remaining percentage, UTC reset date, and separate checkpoint/quota timestamps. The old checkpoint was correctly labeled stale. Layout inspection found no clipping ancestors for the open tooltip. At a 420-pixel viewport the compact numeric badge stayed inside the viewport. The browser task was closed afterward.
+In a temporary ego-browser task, the running BB frontend displayed the cumulative AIC value. Hovering showed session premium requests, monthly remaining percentage, UTC reset date, and separate checkpoint/quota timestamps. The old checkpoint was correctly labeled stale. Layout inspection found no clipping ancestors for the open tooltip. At a 420-pixel viewport the compact numeric badge stayed inside the viewport. The browser task was closed afterward.
 
 No model prompt was sent, no charged request was generated, and no real Copilot files were changed. A new real Copilot checkpoint was **not** observed during verification. Automatic append → host signal and signal → UI refresh were verified with synthetic filesystem and SDK/frontend harness tests, rather than claimed as a naturally occurring live billed update.
 

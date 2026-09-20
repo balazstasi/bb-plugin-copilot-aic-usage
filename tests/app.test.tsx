@@ -8,10 +8,23 @@ import { liveUsage, threadId } from "./fixtures";
 
 afterEach(cleanup);
 describe("header usage UI", () => {
-  it("shows exact AIC and required details on hover and keyboard focus", () => {
+  it.each([
+    ["1", "1 AIC"],
+    ["1.123123", "1 AIC"],
+    ["1.49", "1 AIC"],
+    ["1.5", "2 AIC"],
+    ["1.51", "2 AIC"],
+    ["0.000000001", "0 AIC"],
+    ["999999999999999999999.5", "1000000000000000000000 AIC"],
+  ])("rounds %s AIC to the nearest natural number", (aic, expected) => {
+    const view = render(<UsageBadge usage={{ ...liveUsage(), aic }} />);
+    expect(view.getByRole("button").textContent).toBe(expected);
+  });
+
+  it("shows whole-number AIC and required details on hover and keyboard focus", () => {
     const view = render(<UsageBadge usage={liveUsage()} />);
     const button = view.getByRole("button");
-    expect(button.textContent).toBe("10.831717 AIC");
+    expect(button.textContent).toBe("11 AIC");
     fireEvent.mouseEnter(button.parentElement!);
     const tooltip = view.getByRole("tooltip");
     expect(tooltip.textContent).toContain("Premium requests8");
@@ -52,14 +65,14 @@ describe("header usage UI", () => {
         realtimeConnectionState: "connected",
       },
     );
-    await slot.findByText("10.831717 AIC");
-    current = { ...current, aic: "12.000000001" };
+    await slot.findByText("11 AIC");
+    current = { ...current, aic: "12.51" };
     await slot.behavior.emitRealtime(USAGE_CHANGED, { threadId: "thr_other" });
-    expect(slot.queryByText("12.000000001 AIC")).toBeNull();
+    expect(slot.queryByText("13 AIC")).toBeNull();
     await slot.behavior.emitRealtime(USAGE_CHANGED, { threadId });
-    await slot.findByText("12.000000001 AIC");
+    await slot.findByText("13 AIC");
     await slot.behavior.setRealtimeConnectionState("reconnecting");
-    await slot.findByText("12.000000001 AIC · stale");
+    await slot.findByText("13 AIC · stale");
     slot.lifecycle.unmount();
   });
 });

@@ -39,7 +39,7 @@ bb plugin reload copilot-aic-usage
 
 The supported `experimental_threadHeaderAction` slot places the badge in the **thread header action row**. SDK 0.4.104 has no public slot directly beside the existing context-window circle. This plugin uses no DOM injection, global selectors, core patches, or context-token substitution. Exact placement beside the circle requires a BB UI slot addition.
 
-The visible decimal is `totalNanoAiu / 1_000_000_000`, preserving up to nine fractional digits. For example, `10831717000` becomes `10.831717 AIC`. Zero is displayed only after an actual zero-valued checkpoint. Counts are cumulative for the Copilot session, including earlier turns if that session was resumed. They are not per-turn deltas or the sum of historical BB sessions.
+The telemetry reader preserves `totalNanoAiu / 1_000_000_000` exactly, but the badge displays the nearest natural number using ordinary half-up rounding. For example, `1.123123` is displayed as `1 AIC`, `1.51` as `2 AIC`, and `10831717000` as `11 AIC`. Zero is displayed only after an actual checkpoint below `0.5 AIC`. Counts are cumulative for the Copilot session, including earlier turns if that session was resumed. They are not per-turn deltas or the sum of historical BB sessions.
 
 The hover details distinguish current-session premium requests from the monthly quota snapshot. Monthly quota can lag and may include other sessions. Missing fields read “Unavailable.” A checkpoint older than five minutes, a missing live process lock, or a disconnected BB realtime connection produces a stale state. An idle session can legitimately be stale. Checkpoint and monthly-snapshot timestamps are shown separately.
 

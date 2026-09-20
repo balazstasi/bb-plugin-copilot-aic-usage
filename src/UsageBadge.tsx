@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import type { Usage } from "./model";
+import { formatAic } from "./format";
 
 const reasons: Record<Usage["reason"], string> = {
   ok: "Live local checkpoint",
@@ -26,7 +27,7 @@ export function UsageBadge({
   const id = useId();
   const [open, setOpen] = useState(false);
   if (!usage.supported) return null;
-  const value = usage.aic ?? "—";
+  const value = formatAic(usage.aic);
   const summary = `${value} AIC${usage.status === "stale" ? " · stale" : ""}`;
   return (
     <div
