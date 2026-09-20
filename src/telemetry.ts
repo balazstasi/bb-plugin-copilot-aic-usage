@@ -75,8 +75,10 @@ export function parseUsageLine(line: string): UsageEvent | null {
         remainingPercentage:
           remaining !== null && remaining <= 100 ? remaining : null,
         resetDate: reset === null ? null : new Date(reset).toISOString(),
-        overageAllowed: bool(q.overageAllowed),
-        overagePermitted: bool(q.overagePermitted),
+        usageAllowedWithExhaustedQuota: bool(q.usageAllowedWithExhaustedQuota),
+        overageAllowedWithExhaustedQuota: bool(
+          q.overageAllowedWithExhaustedQuota,
+        ),
       },
     };
   } catch {

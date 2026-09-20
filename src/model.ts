@@ -10,8 +10,8 @@ export const quotaSchema = z
     entitlementRequests: count.nullable(),
     remainingPercentage: count.max(100).nullable(),
     resetDate: z.string().datetime({ offset: true }).nullable(),
-    overageAllowed: z.boolean().nullable(),
-    overagePermitted: z.boolean().nullable(),
+    usageAllowedWithExhaustedQuota: z.boolean().nullable(),
+    overageAllowedWithExhaustedQuota: z.boolean().nullable(),
   })
   .strict();
 export const usageSchema = z

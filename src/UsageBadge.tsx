@@ -91,19 +91,19 @@ export function UsageBadge({
                 </dd>
               </>
             )}
-            {usage.quota?.overageAllowed != null && (
+            {usage.quota?.usageAllowedWithExhaustedQuota != null && (
               <>
-                <dt>Overage allowed</dt>
+                <dt>Usage after quota</dt>
                 <dd className="text-right">
-                  {usage.quota.overageAllowed ? "Yes" : "No"}
+                  {usage.quota.usageAllowedWithExhaustedQuota ? "Yes" : "No"}
                 </dd>
               </>
             )}
-            {usage.quota?.overagePermitted != null && (
+            {usage.quota?.overageAllowedWithExhaustedQuota != null && (
               <>
-                <dt>Overage permitted</dt>
+                <dt>Overage after quota</dt>
                 <dd className="text-right">
-                  {usage.quota.overagePermitted ? "Yes" : "No"}
+                  {usage.quota.overageAllowedWithExhaustedQuota ? "Yes" : "No"}
                 </dd>
               </>
             )}

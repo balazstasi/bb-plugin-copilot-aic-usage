@@ -35,7 +35,11 @@ describe("privacy boundary and conversion", () => {
     });
     expect(events[1]).toMatchObject({
       kind: "quota",
-      quota: { remainingPercentage: 23, overageAllowed: false },
+      quota: {
+        remainingPercentage: 23,
+        usageAllowedWithExhaustedQuota: false,
+        overageAllowedWithExhaustedQuota: true,
+      },
     });
     expect(JSON.stringify(events)).not.toMatch(
       /PRIVATE|prompt|reasoning|secret/,
