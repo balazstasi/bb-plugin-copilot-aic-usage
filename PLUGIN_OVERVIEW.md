@@ -6,7 +6,7 @@ The badge updates while the thread is open. Missing data stays unavailable; save
 
 ## Requirements
 
-Install GitHub Copilot CLI and sign in with a Copilot-enabled account on the machine running your BB environment. Use BB's `gh-copilot` provider plugin (`acp-gh-copilot`) or configure a custom ACP agent with ID `copilot` (`acp-copilot`) and arguments `["--acp"]`. Requires BB 0.43.4 or newer and compatible Plugin SDK 0.5 APIs.
+Install the `gh-copilot` provider plugin from BB's marketplace. Install GitHub Copilot CLI and sign in with a Copilot-enabled account on the machine running your BB environment. Requires BB 0.43.4 or newer and compatible Plugin SDK 0.5 APIs. Existing `acp-copilot` threads also work.
 
 Follow the [Copilot ACP setup instructions](https://github.com/balazstasi/bb-plugin-copilot-aic-usage#readme).
 
