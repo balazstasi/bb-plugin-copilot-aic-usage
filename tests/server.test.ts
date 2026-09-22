@@ -81,6 +81,18 @@ describe("server routing and realtime", () => {
       "10.831717",
     );
   });
+  it("supports the marketplace GitHub Copilot provider", async () => {
+    const { harness } = setup("acp-gh-copilot");
+    expect(await harness.behavior.callRpc("usage", { threadId })).toMatchObject(
+      {
+        supported: true,
+        aic: "10.831717",
+      },
+    );
+    expect(harness.inspection.experimental_hostRpcCalls[0]).toMatchObject({
+      input: { threadId, sessionId: sessionA },
+    });
+  });
   it("ignores another host or obsolete session signals", async () => {
     const { harness, setIdentity } = setup();
     await harness.behavior.callRpc("usage", { threadId });

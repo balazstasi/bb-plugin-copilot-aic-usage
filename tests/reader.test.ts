@@ -54,20 +54,20 @@ describe("bounded session reader", () => {
     await writeFile(path, checkpoint(3000000000) + " ".repeat(1000));
     expect((await reader.read()).aic).toBe("3");
   });
-  it("marks inactive and old checkpoints stale and clears data on missing files", async () => {
+  it("keeps the saved total available when returning to an idle session", async () => {
     await writeFile(
       join(directory, "events.jsonl"),
       checkpoint(1, "2020-01-01T00:00:00Z"),
     );
     const reader = new SessionReader(directory);
     expect(await reader.read()).toMatchObject({
-      status: "stale",
-      reason: "inactive-session",
+      status: "live",
+      reason: "ok",
     });
     await writeFile(join(directory, `inuse.${process.pid}.lock`), "");
     expect(await reader.read()).toMatchObject({
-      status: "stale",
-      reason: "no-recent-checkpoint",
+      status: "live",
+      reason: "ok",
     });
     await rm(join(directory, "events.jsonl"));
     expect(await reader.read()).toMatchObject({

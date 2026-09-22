@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { open, lstat, opendir } from "node:fs/promises";
+import { open, lstat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { emptyUsage, type Usage } from "./contract";
@@ -83,40 +83,11 @@ export class SessionReader {
       } finally {
         await file.close();
       }
-      let active = false;
-      // Locks only inform freshness, never session selection.
-      let scanned = 0;
-      for await (const entry of await opendir(this.directory)) {
-        if (++scanned > 1024) break;
-        const match = /^inuse\.(\d{1,10})\.lock$/.exec(entry.name);
-        if (!match || Number(match[1]) <= 0) continue;
-        try {
-          process.kill(Number(match[1]), 0);
-          active = true;
-        } catch {
-          /* exited or inaccessible */
-        }
-      }
-      const old =
-        this.usage.checkpointAt === null ||
-        now - this.usage.checkpointAt > 5 * 60_000;
       return {
         ...this.usage,
         checkedAt: now,
-        status:
-          this.usage.aic === null
-            ? "pending"
-            : !active || old
-              ? "stale"
-              : "live",
-        reason:
-          this.usage.aic === null
-            ? "awaiting-checkpoint"
-            : !active
-              ? "inactive-session"
-              : old
-                ? "no-recent-checkpoint"
-                : "ok",
+        status: this.usage.aic === null ? "pending" : "live",
+        reason: this.usage.aic === null ? "awaiting-checkpoint" : "ok",
       };
     } catch {
       this.offset = 0;

@@ -134,7 +134,12 @@ export class UsageMonitor {
         entry.reader.read(),
         this.readToday(),
       ]);
-      const next = { ...value, todayAic: today.aic, todayAt: today.at };
+      const next = {
+        ...value,
+        todayAic: today.aic,
+        todayAt: today.at,
+        todayReason: today.reason,
+      };
       const changed =
         entry.value !== undefined && signature(entry.value) !== signature(next);
       entry.value = next;

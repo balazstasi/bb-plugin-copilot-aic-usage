@@ -8,7 +8,15 @@ const CHUNK = 64 * 1024;
 const READ_BUDGET = 2 * 1024 * 1024;
 const MAX_DIRS = 1024;
 const MAX_FILES = 64;
-const unavailable = { aic: null, at: null };
+const unavailable = (reason: DailyReason) => ({ aic: null, at: null, reason });
+const isMissing = (error: unknown) =>
+  error instanceof Error && "code" in error && error.code === "ENOENT";
+type DailyReason =
+  | "directory-limit"
+  | "file-limit"
+  | "incomplete-session"
+  | "unreadable-session"
+  | "root-unavailable";
 type DailyScan = {
   latest: { nano: bigint; at: number } | null;
   baseline: bigint | null;
@@ -107,7 +115,11 @@ function applyDailyLine(line: string, startOfDay: number, found: DailyScan) {
 export async function readTodayAic(
   root: string,
   now = Date.now(),
-): Promise<{ aic: string | null; at: number | null }> {
+): Promise<{
+  aic: string | null;
+  at: number | null;
+  reason: DailyReason | null;
+}> {
   const startOfDay = startOfLocalDay(now);
   let total = 0n;
   let latestAt: number | null = null;
@@ -115,7 +127,7 @@ export async function readTodayAic(
   let files = 0;
   try {
     for await (const entry of await opendir(root)) {
-      if (++dirs > MAX_DIRS) return unavailable;
+      if (++dirs > MAX_DIRS) return unavailable("directory-limit");
       if (!sessionIdSchema.safeParse(entry.name).success) continue;
       const directory = join(root, entry.name);
       try {
@@ -123,18 +135,19 @@ export async function readTodayAic(
         if (dir.isSymbolicLink() || !dir.isDirectory()) continue;
         const events = await lstat(join(directory, "events.jsonl"));
         if (!events.isFile() || events.mtimeMs < startOfDay) continue;
-        if (++files > MAX_FILES) return unavailable;
+        if (++files > MAX_FILES) return unavailable("file-limit");
         const contrib = await sessionTodayNano(directory, startOfDay);
-        if (!contrib) return unavailable;
+        if (!contrib) return unavailable("incomplete-session");
         total += contrib.nano;
         if (contrib.at !== null && (latestAt === null || contrib.at > latestAt))
           latestAt = contrib.at;
-      } catch {
-        return unavailable;
+      } catch (error) {
+        if (isMissing(error)) continue;
+        return unavailable("unreadable-session");
       }
     }
   } catch {
-    return unavailable;
+    return unavailable("root-unavailable");
   }
-  return { aic: nanoToAic(total.toString()), at: latestAt };
+  return { aic: nanoToAic(total.toString()), at: latestAt, reason: null };
 }

@@ -27,27 +27,40 @@ describe("header usage UI", () => {
     expect(button.textContent).toBe("11 AIC");
     expect(button.textContent).not.toContain("32");
     fireEvent.mouseEnter(button.parentElement!);
-    const tooltip = view.getByRole("tooltip");
-    expect(tooltip.textContent).toContain("Used today on this host32 AIC");
-    expect(tooltip.textContent).toContain("Premium used this month69 / 90");
-    expect(tooltip.textContent).toContain("21 · 23%");
-    expect(tooltip.textContent).toContain("2026-10-01");
-    expect(tooltip.textContent).toContain("does not publish remaining AIC");
+    const dialog = view.getByRole("dialog");
+    expect(dialog.textContent).toContain("Used today on this host32 AIC");
+    expect(dialog.textContent).toContain(
+      "Premium used this month69 / 90 (77%)",
+    );
+    expect(dialog.textContent).toContain("Monthly reset (UTC)2026-10-01");
+    expect(dialog.textContent).not.toContain("Premium requests this session");
+    expect(dialog.textContent).not.toContain("Premium remaining");
+    expect(dialog.textContent).not.toContain("Usage after quota");
+    const details = dialog.querySelector("details")!;
+    const disclosure = view.getByText("Details");
+    fireEvent.blur(button, { relatedTarget: disclosure });
+    expect(view.getByRole("dialog")).toBeTruthy();
+    expect(details.open).toBe(false);
+    fireEvent.click(disclosure);
+    expect(details.open).toBe(true);
+    expect(details.textContent).toContain("does not publish remaining AIC");
+    fireEvent.click(disclosure);
+    expect(details.open).toBe(false);
     fireEvent.keyDown(button, { key: "Escape" });
-    expect(view.queryByRole("tooltip")).toBeNull();
+    expect(view.queryByRole("dialog")).toBeNull();
     fireEvent.focus(button);
-    expect(view.getByRole("tooltip")).toBeTruthy();
+    expect(view.getByRole("dialog")).toBeTruthy();
   });
   it("shows unavailable/stale states and hides unsupported providers", () => {
     const view = render(<UsageBadge usage={emptyUsage("missing-identity")} />);
     expect(view.getByRole("button").textContent).toBe("— AIC");
     fireEvent.focus(view.getByRole("button"));
-    expect(view.getByRole("tooltip").textContent).toContain(
+    expect(view.getByRole("dialog").textContent).toContain(
       "exact Copilot session identity",
     );
     view.rerender(
       <UsageBadge
-        usage={{ ...liveUsage(), status: "stale", reason: "inactive-session" }}
+        usage={{ ...liveUsage(), status: "stale", reason: "connection-lost" }}
       />,
     );
     expect(view.getByRole("button").textContent).toContain("stale");
@@ -55,6 +68,22 @@ describe("header usage UI", () => {
       <UsageBadge usage={emptyUsage("unsupported-provider", false)} />,
     );
     expect(view.queryByRole("button")).toBeNull();
+  });
+  it("explains an unavailable daily total inside Details", () => {
+    const view = render(
+      <UsageBadge
+        usage={{
+          ...liveUsage(),
+          todayAic: null,
+          todayReason: "unreadable-session",
+        }}
+      />,
+    );
+    fireEvent.focus(view.getByRole("button"));
+    fireEvent.click(view.getByText("Details"));
+    expect(view.getByRole("dialog").textContent).toContain(
+      "a session file cannot be read",
+    );
   });
   it("registers the supported slot and refetches on scoped realtime without refresh", async () => {
     const app = await loadPluginApp(() => import("../app"));

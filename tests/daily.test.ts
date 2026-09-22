@@ -11,7 +11,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readTodayAic, startOfLocalDay } from "../src/daily";
 import { parseDailyLine } from "../src/telemetry";
-import { remainingRequests } from "../src/format";
 import { checkpoint, sessionA, sessionB, sessionStart } from "./fixtures";
 
 let root: string;
@@ -68,6 +67,14 @@ describe("host-wide today AIC", () => {
     await session(sessionB, checkpoint(1_000_000_000, today));
     expect(await readTodayAic(root, now)).toMatchObject({ aic: "1" });
   });
+  it("ignores a session directory that has no event file yet", async () => {
+    await session(sessionA, checkpoint(1_000_000_000, today));
+    await mkdir(join(root, sessionB));
+    expect(await readTodayAic(root, now)).toMatchObject({
+      aic: "1",
+      reason: null,
+    });
+  });
   it("reports unavailable when a session exceeds the reverse-read budget", async () => {
     await session(
       sessionA,
@@ -107,15 +114,5 @@ describe("host-wide today AIC", () => {
       nano: 1n,
       at: Date.parse(today),
     });
-  });
-});
-
-describe("remaining premium requests", () => {
-  it("subtracts used from entitlement and fails closed", () => {
-    expect(remainingRequests(69, 90)).toBe(21);
-    expect(remainingRequests(90, 90)).toBe(0);
-    expect(remainingRequests(100, 90)).toBe(0);
-    expect(remainingRequests(null, 90)).toBeNull();
-    expect(remainingRequests(69, null)).toBeNull();
   });
 });

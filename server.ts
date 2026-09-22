@@ -55,7 +55,10 @@ export default function plugin(bb: BbPluginApi) {
           threadId,
           include: "environment",
         });
-        if (thread.providerId !== "acp-copilot") {
+        if (
+          thread.providerId !== "acp-copilot" &&
+          thread.providerId !== "acp-gh-copilot"
+        ) {
           subscriptions.delete(threadId);
           return emptyUsage("unsupported-provider", false);
         }

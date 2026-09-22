@@ -5,11 +5,3 @@ export function formatAic(value: string | null): string {
     ? (BigInt(whole) + 1n).toString()
     : whole;
 }
-
-export function remainingRequests(
-  used: number | null | undefined,
-  entitlement: number | null | undefined,
-): number | null {
-  if (used == null || entitlement == null) return null;
-  return Math.max(0, entitlement - used);
-}
