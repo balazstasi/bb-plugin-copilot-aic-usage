@@ -8,15 +8,18 @@ const CHUNK = 64 * 1024;
 const READ_BUDGET = 2 * 1024 * 1024;
 const MAX_DIRS = 1024;
 const MAX_FILES = 64;
+
 const unavailable = (reason: DailyReason) => ({ aic: null, at: null, reason });
 const isMissing = (error: unknown) =>
   error instanceof Error && "code" in error && error.code === "ENOENT";
+
 type DailyReason =
   | "directory-limit"
   | "file-limit"
   | "incomplete-session"
   | "unreadable-session"
   | "root-unavailable";
+
 type DailyScan = {
   latest: { nano: bigint; at: number } | null;
   baseline: bigint | null;
@@ -38,6 +41,7 @@ async function sessionTodayNano(
 ): Promise<{ nano: bigint; at: number | null } | null> {
   const dir = await lstat(directory);
   if (dir.isSymbolicLink() || !dir.isDirectory()) return null;
+
   const file = await open(
     join(directory, "events.jsonl"),
     constants.O_RDONLY | constants.O_NOFOLLOW,
@@ -45,6 +49,7 @@ async function sessionTodayNano(
   try {
     const stat = await file.stat();
     if (!stat.isFile() || stat.size === 0) return { nano: 0n, at: null };
+
     let position = stat.size;
     let buffer = "";
     const found: DailyScan = {
@@ -57,6 +62,7 @@ async function sessionTodayNano(
     const done = () =>
       found.baseline !== null ||
       (found.startedAt !== null && found.latest !== null);
+
     while (position > 0 && !done() && read < READ_BUDGET) {
       const size = Math.min(CHUNK, position, READ_BUDGET - read);
       position -= size;
@@ -75,19 +81,23 @@ async function sessionTodayNano(
         newline = buffer.lastIndexOf("\n");
       }
     }
+
     if (!skipTail && found.baseline === null && position === 0 && buffer)
       applyDailyLine(buffer, startOfDay, found);
+
     const reachedStart = position === 0;
     const latest = found.latest;
     if (!latest)
       return reachedStart || found.baseline !== null
         ? { nano: 0n, at: null }
         : null;
+
     if (found.baseline !== null)
       return {
         nano: latest.nano > found.baseline ? latest.nano - found.baseline : 0n,
         at: latest.at,
       };
+
     if (found.startedAt !== null && found.startedAt < startOfDay) return null;
     if (found.startedAt !== null || reachedStart)
       return { nano: latest.nano, at: latest.at };
@@ -101,14 +111,17 @@ function applyDailyLine(line: string, startOfDay: number, found: DailyScan) {
   if (!line) return;
   const event = parseDailyLine(line);
   if (!event || event.at === null) return;
+
   if (event.kind === "start") {
     found.startedAt = event.at;
     return;
   }
+
   if (event.at >= startOfDay) {
     if (!found.latest) found.latest = { nano: event.nano, at: event.at };
     return;
   }
+
   found.baseline = event.nano;
 }
 
@@ -125,6 +138,7 @@ export async function readTodayAic(
   let latestAt: number | null = null;
   let dirs = 0;
   let files = 0;
+
   try {
     for await (const entry of await opendir(root)) {
       if (++dirs > MAX_DIRS) return unavailable("directory-limit");
@@ -149,5 +163,6 @@ export async function readTodayAic(
   } catch {
     return unavailable("root-unavailable");
   }
+
   return { aic: nanoToAic(total.toString()), at: latestAt, reason: null };
 }

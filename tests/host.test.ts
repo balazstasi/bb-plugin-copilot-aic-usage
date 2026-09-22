@@ -172,19 +172,40 @@ describe("host RPC, watch lifecycle and concurrent sessions", () => {
       ).aic,
     ).toBe("3");
   });
-  it("observes a real filesystem append through the host signal contract", async () => {
+  it("observes a real filesystem append through the host signal contract", async ({
+    skip,
+  }) => {
     await mkdir(join(root, sessionA));
     const path = join(root, sessionA, "events.jsonl");
     await writeFile(path, checkpoint(1000000000));
+
+    let listener: ExperimentalHostWatchListener | undefined;
+    let watchError: Error | undefined;
+    const watcher = watch(join(root, sessionA), () => {
+      if (listener) void listener({ kind: "rescan-required" });
+    });
+    watcher.on("error", (error) => {
+      watchError = error;
+    });
+    disposers.push(async () => watcher.close());
+
+    // Some macOS environments cannot allocate any native watchers.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (watchError) {
+      if ("code" in watchError && watchError.code === "EMFILE")
+        skip("native filesystem watchers are unavailable (EMFILE)");
+      throw watchError;
+    }
+
     const harness = experimental_createHostEntryHarness(
       createUsageHostEntry(root),
       {
-        experimental_watch: async (options, listener) => {
-          const watcher = watch(options.rootPath, () => {
-            void listener({ kind: "rescan-required" });
-          });
+        experimental_watch: async (options, watchListener) => {
+          expect(options.rootPath).toBe(join(root, sessionA));
+          listener = watchListener;
           return {
             dispose: async () => {
+              listener = undefined;
               watcher.close();
             },
           };
@@ -194,9 +215,10 @@ describe("host RPC, watch lifecycle and concurrent sessions", () => {
     disposers.push(() => harness.experimental_dispose());
     await harness.experimental_call("read", { threadId, sessionId: sessionA });
     await appendFile(path, checkpoint(5000000000));
-    await vi.waitFor(() =>
-      expect(harness.experimental_getSignals().length).toBeGreaterThan(0),
-    );
+    await vi.waitFor(() => {
+      if (watchError) throw watchError;
+      expect(harness.experimental_getSignals().length).toBeGreaterThan(0);
+    });
     expect(
       (
         await harness.experimental_call("read", {

@@ -6,6 +6,7 @@ import { UsageMonitor } from "./src/monitor";
 
 export function createUsageHostEntry(root: string) {
   let monitor: UsageMonitor | undefined;
+
   return experimental_defineHostEntry({
     contract: hostContract,
     experimental_signals: hostSignals,
@@ -13,6 +14,7 @@ export function createUsageHostEntry(root: string) {
       read: (target, context) => {
         if (!monitor || monitor.disposed)
           monitor = new UsageMonitor(root, context);
+
         return monitor.read(target);
       },
     },
@@ -22,6 +24,7 @@ export function createUsageHostEntry(root: string) {
     },
   });
 }
+
 export default createUsageHostEntry(
   join(homedir(), ".copilot", "session-state"),
 );

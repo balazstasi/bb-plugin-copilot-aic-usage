@@ -14,6 +14,7 @@ const reasons: Record<Usage["reason"], string> = {
   capacity: "Usage watcher capacity reached",
   "connection-lost": "Stale: reconnecting to BB",
 };
+
 const todayReasons: Record<NonNullable<Usage["todayReason"]>, string> = {
   "directory-limit": "Today's total is unavailable: too many session folders",
   "file-limit": "Today's total is unavailable: too many session files",
@@ -24,6 +25,7 @@ const todayReasons: Record<NonNullable<Usage["todayReason"]>, string> = {
   "root-unavailable":
     "Today's total is unavailable: Copilot session storage cannot be read",
 };
+
 export function UsageBadge({
   usage,
   compact = false,
@@ -34,10 +36,12 @@ export function UsageBadge({
   const id = useId();
   const [open, setOpen] = useState(false);
   if (!usage.supported) return null;
+
   const value = formatAic(usage.aic);
   const today = formatAic(usage.todayAic);
   const used = usage.quota?.usedRequests;
   const entitlement = usage.quota?.entitlementRequests;
+
   let premium = "Unavailable";
   if (used != null) {
     if (usage.quota?.isUnlimitedEntitlement) premium = `${used} / Unlimited`;
@@ -45,7 +49,9 @@ export function UsageBadge({
     else
       premium = `${used} / ${entitlement}${entitlement > 0 ? ` (${Math.round((used / entitlement) * 100)}%)` : ""}`;
   }
+
   const summary = `${value} AIC${usage.status === "stale" ? " · stale" : ""}`;
+
   return (
     <div
       className="relative inline-flex"

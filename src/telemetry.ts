@@ -8,6 +8,7 @@ const count = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null;
 const bool = (v: unknown): boolean | null =>
   typeof v === "boolean" ? v : null;
+
 function timestamp(v: unknown): number | null {
   if (typeof v !== "string" || v.length > 40 || !/^\d{4}-\d\d-\d\dT/.test(v))
     return null;
@@ -24,6 +25,7 @@ export function nanoToAic(value: unknown): string | null {
     .toString()
     .padStart(9, "0")
     .replace(/0+$/, "");
+
   return `${nano / 1_000_000_000n}${fraction ? `.${fraction}` : ""}`;
 }
 
@@ -44,6 +46,7 @@ function nanoDigits(value: unknown): string | null {
   if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0)
     return String(value);
   if (typeof value === "string" && /^\d{1,30}$/.test(value)) return value;
+
   return null;
 }
 
@@ -59,6 +62,7 @@ export function parseUsageLine(line: string): UsageEvent | null {
       return null;
     const data = record(event.data);
     const at = timestamp(event.timestamp);
+
     if (event.type === "session.usage_checkpoint") {
       const aic = nanoToAic(data.totalNanoAiu);
       return aic === null
@@ -70,10 +74,12 @@ export function parseUsageLine(line: string): UsageEvent | null {
             at,
           };
     }
+
     const q = record(record(data.quotaSnapshots).premium_interactions);
     if (!Object.keys(q).length) return null;
     const remaining = count(q.remainingPercentage);
     const reset = timestamp(q.resetDate);
+
     return {
       kind: "quota",
       at,
@@ -102,6 +108,7 @@ export function parseDailyLine(line: string): DailyEvent | null {
   try {
     const event = record(JSON.parse(line));
     const at = timestamp(event.timestamp);
+
     if (event.type === "session.start") return { kind: "start", at };
     if (event.type !== "session.usage_checkpoint") return null;
     const digits = nanoDigits(record(event.data).totalNanoAiu);
@@ -117,10 +124,12 @@ export function parseDailyLine(line: string): DailyEvent | null {
 export class JsonlDecoder {
   private pending = Buffer.alloc(0);
   private skipping = false;
+
   reset(skipFirstLine = false) {
     this.pending = Buffer.alloc(0);
     this.skipping = skipFirstLine;
   }
+
   push(chunk: Buffer): UsageEvent[] {
     const events: UsageEvent[] = [];
     let start = 0;
@@ -135,6 +144,7 @@ export class JsonlDecoder {
         } else this.pending = Buffer.concat([this.pending, part]);
       }
       if (newline < 0) break;
+
       if (!this.skipping) {
         const event = parseUsageLine(this.pending.toString("utf8"));
         if (event) events.push(event);
@@ -143,6 +153,7 @@ export class JsonlDecoder {
       this.skipping = false;
       start = newline + 1;
     }
+
     return events;
   }
 }

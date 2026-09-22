@@ -3,11 +3,13 @@ import { z } from "zod";
 export const threadIdSchema = z.string().regex(/^thr_[a-zA-Z0-9_-]{1,100}$/);
 // Session IDs are used as a single path component, never as an arbitrary path.
 export const sessionIdSchema = z.string().uuid();
+
 const count = z.number().finite().nonnegative();
 const aic = z
   .string()
   .regex(/^\d+(\.\d{1,9})?$/)
   .nullable();
+
 export const quotaSchema = z
   .object({
     usedRequests: count.nullable(),
@@ -20,6 +22,7 @@ export const quotaSchema = z
     isUnlimitedEntitlement: z.boolean().nullable(),
   })
   .strict();
+
 export const usageSchema = z
   .object({
     supported: z.boolean(),
@@ -55,8 +58,10 @@ export const usageSchema = z
     checkedAt: z.number().finite().nonnegative(),
   })
   .strict();
+
 export type Usage = z.infer<typeof usageSchema>;
 export type Quota = z.infer<typeof quotaSchema>;
+
 export const emptyUsage = (
   reason: Usage["reason"],
   supported = true,
@@ -74,9 +79,11 @@ export const emptyUsage = (
   todayAt: null,
   checkedAt: Date.now(),
 });
+
 export const targetSchema = z
   .object({ threadId: threadIdSchema, sessionId: sessionIdSchema })
   .strict();
 export type Target = z.infer<typeof targetSchema>;
+
 export const realtimeSchema = z.object({ threadId: threadIdSchema }).strict();
 export const USAGE_CHANGED = "usage-changed";

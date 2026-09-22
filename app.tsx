@@ -20,18 +20,22 @@ function UsageAction({
     null,
   );
   const refreshRef = useRef<() => void>(() => {});
+
   useEffect(() => {
-    let alive = true,
-      running = false,
-      again = false;
+    let alive = true;
+    let running = false;
+    let again = false;
+
     const refresh = async () => {
       if (running) {
         again = true;
         return;
       }
+
       running = true;
       do {
         again = false;
+
         try {
           const usage = await rpc.call("usage", { threadId });
           if (alive) setState({ threadId, usage });
@@ -51,21 +55,26 @@ function UsageAction({
             );
         }
       } while (again && alive);
+
       running = false;
     };
+
     refreshRef.current = () => {
       void refresh();
     };
     void refresh();
+
     const timer = setInterval(() => {
       void refresh();
     }, 30_000);
+
     return () => {
       alive = false;
       clearInterval(timer);
       refreshRef.current = () => {};
     };
   }, [rpc, threadId]);
+
   const onChanged = useCallback(
     (payload: unknown) => {
       const parsed = realtimeSchema.safeParse(payload);
@@ -75,11 +84,14 @@ function UsageAction({
     [threadId],
   );
   useRealtime(USAGE_CHANGED, onChanged);
+
   useEffect(() => {
     if (connection === "connected") refreshRef.current();
   }, [connection]);
+
   if (!state || state.threadId !== threadId || !state.usage.supported)
     return null;
+
   const usage =
     connection === "connected"
       ? state.usage
@@ -88,8 +100,10 @@ function UsageAction({
           status: "stale" as const,
           reason: "connection-lost" as const,
         };
+
   return <UsageBadge usage={usage} compact={isCompactViewport} />;
 }
+
 export default definePluginApp((app) => {
   app.slots.experimental_threadHeaderAction({
     id: "copilot-aic",

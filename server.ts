@@ -18,8 +18,10 @@ export default function plugin(bb: BbPluginApi) {
     { hostId: string; sessionId: string; touched: number }
   >();
   const pending = new Map<string, ReturnType<typeof setTimeout>>();
+
   const publish = (threadId: string) =>
     bb.realtime.publish(USAGE_CHANGED, { threadId });
+
   const unsubscribe = host.experimental_onSignal(
     "changed",
     ({ hostId, payload }) => {
@@ -32,12 +34,15 @@ export default function plugin(bb: BbPluginApi) {
         publish(payload.threadId);
     },
   );
+
   const unsubscribeExit = host.experimental_onWorkerExit(({ hostId }) => {
     for (const [id, target] of subscriptions)
       if (target.hostId === hostId) publish(id);
   });
+
   bb.events.on("experimental_thread.events", ({ thread }) => {
     if (!subscriptions.has(thread.id) || pending.has(thread.id)) return;
+
     const timer = setTimeout(() => {
       pending.delete(thread.id);
       if (Date.now() - (subscriptions.get(thread.id)?.touched ?? 0) < 90_000)
@@ -47,9 +52,11 @@ export default function plugin(bb: BbPluginApi) {
     timer.unref();
     pending.set(thread.id, timer);
   });
+
   bb.rpc.register(rpcContract, {
     usage: async ({ threadId }) => {
       let supported = false;
+
       try {
         const thread = await bb.sdk.threads.get({
           threadId,
@@ -62,9 +69,11 @@ export default function plugin(bb: BbPluginApi) {
           subscriptions.delete(threadId);
           return emptyUsage("unsupported-provider", false);
         }
+
         supported = true;
         const environment = "environment" in thread ? thread.environment : null;
         if (!environment?.hostId) return emptyUsage("missing-host");
+
         // Server-side filter: prompts, responses and tool events are never fetched.
         const identities = await bb.sdk.threads.events.list({
           threadId,
@@ -75,6 +84,7 @@ export default function plugin(bb: BbPluginApi) {
         const selected = selectSession(
           identities.filter((row) => row.type === "thread/identity"),
         );
+
         for (const [id, target] of subscriptions)
           if (Date.now() - target.touched > 90_000) subscriptions.delete(id);
         if (!subscriptions.has(threadId) && subscriptions.size >= 256)
@@ -84,6 +94,7 @@ export default function plugin(bb: BbPluginApi) {
           sessionId: "sessionId" in selected ? selected.sessionId : "",
           touched: Date.now(),
         });
+
         if ("reason" in selected) return emptyUsage(selected.reason);
         return await host.call(
           "read",
@@ -95,6 +106,7 @@ export default function plugin(bb: BbPluginApi) {
       }
     },
   });
+
   bb.onDispose(() => {
     unsubscribe();
     unsubscribeExit();

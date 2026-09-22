@@ -6,6 +6,7 @@ import { emptyUsage, type Usage } from "./contract";
 import { JsonlDecoder, type UsageEvent } from "./telemetry";
 
 const READ_BUDGET = 8 * 1024 * 1024;
+
 async function fingerprint(
   file: Awaited<ReturnType<typeof open>>,
   offset: number,
@@ -15,6 +16,7 @@ async function fingerprint(
     tail = Buffer.alloc(length);
   await file.read(head, 0, length, 0);
   await file.read(tail, 0, length, offset - length);
+
   return createHash("sha256").update(head).update(tail).digest("hex");
 }
 
@@ -24,11 +26,14 @@ export class SessionReader {
   private inode = "";
   private anchor = "";
   private usage = emptyUsage("awaiting-checkpoint");
+
   constructor(readonly directory: string) {}
+
   private reset(skipFirstLine = false) {
     this.decoder.reset(skipFirstLine);
     this.usage = emptyUsage("awaiting-checkpoint");
   }
+
   private apply(event: UsageEvent) {
     if (event.kind === "checkpoint") {
       this.usage.aic = event.aic;
@@ -39,11 +44,13 @@ export class SessionReader {
       this.usage.quotaAt = event.at;
     }
   }
+
   async read(now = Date.now()): Promise<Usage> {
     try {
       // Refuse symlink session directories and event files; never follow arbitrary paths.
       if (!(await lstat(this.directory)).isDirectory())
         throw new Error("directory");
+
       const file = await open(
         join(this.directory, "events.jsonl"),
         constants.O_RDONLY | constants.O_NOFOLLOW,
@@ -51,6 +58,7 @@ export class SessionReader {
       try {
         const stat = await file.stat();
         if (!stat.isFile()) throw new Error("file");
+
         const inode = `${stat.dev}:${stat.ino}`;
         let replaced = inode !== this.inode || stat.size < this.offset;
         if (!replaced && this.offset > 0) {
@@ -60,11 +68,13 @@ export class SessionReader {
           this.offset = 0;
           this.reset();
         }
+
         this.inode = inode;
         if (stat.size - this.offset > READ_BUDGET) {
           this.offset = stat.size - READ_BUDGET;
           this.reset(true); // Cumulative checkpoints make a bounded tail sufficient.
         }
+
         const buffer = Buffer.alloc(64 * 1024);
         const end = stat.size;
         while (this.offset < end) {
@@ -79,10 +89,12 @@ export class SessionReader {
             this.apply(event);
           this.offset += bytesRead;
         }
+
         this.anchor = await fingerprint(file, this.offset);
       } finally {
         await file.close();
       }
+
       return {
         ...this.usage,
         checkedAt: now,
@@ -94,6 +106,7 @@ export class SessionReader {
       this.inode = "";
       this.anchor = "";
       this.reset();
+
       return { ...emptyUsage("telemetry-unavailable"), checkedAt: now };
     }
   }
