@@ -1,6 +1,6 @@
 # Copilot AI Credits for BB
 
-Displays the **current Copilot ACP session’s cumulative AI credits (AIC / AIU)** in BB’s thread header. Hover or keyboard-focus the value for premium requests, the latest monthly remaining percentage, reset date, and freshness information. Updates arrive without refreshing the page. Only `acp-copilot` threads display the control.
+Displays the **current Copilot ACP session’s cumulative AI credits (AIC / AIU)** in BB’s thread header. Hover or keyboard-focus the value for AIC used today on this host, this session’s premium requests, and the latest monthly premium-request quota (used, remaining count and percentage, reset date). Copilot does not publish remaining AIC. Updates arrive without refreshing the page. Only `acp-copilot` threads display the control.
 
 Independent community plugin. Not affiliated with or endorsed by GitHub, Microsoft, or BB. Local telemetry is informational, not a billing invoice.
 
@@ -10,6 +10,47 @@ Independent community plugin. Not affiliated with or endorsed by GitHub, Microso
 - Node 22 or newer for development and the BB host daemon.
 - GitHub Copilot CLI telemetry compatible with **1.0.86**, launched by BB as `copilot --acp`.
 - Copilot and the BB environment’s host daemon must use the same operating-system account/home directory on that host. The BB server may be on another machine.
+
+### Set up Copilot through ACP
+
+Install [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli) on the machine that runs your BB environment, then sign in with an account that has Copilot access:
+
+```sh
+npm install -g @github/copilot
+copilot login
+copilot --version
+```
+
+BB supports Copilot as a custom ACP agent. In BB's **ACP providers** plugin settings, add this object to the **Custom agents** JSON array, preserving any other agents:
+
+```json
+{
+  "id": "copilot",
+  "displayName": "GitHub Copilot",
+  "command": "copilot",
+  "args": ["--acp"]
+}
+```
+
+Use the absolute output of `command -v copilot` for `command` if the BB host daemon cannot find it on PATH. This is the setup verified on the development machine, where the command is `/opt/homebrew/bin/copilot` and the CLI is 1.0.87. Keep the ID `copilot`: BB derives `acp-copilot` from it, and this plugin uses that provider ID to identify supported threads.
+
+If you have no other custom agents, the equivalent command is:
+
+```sh
+bb plugin config provider-acp set customAgents '[{"id":"copilot","displayName":"GitHub Copilot","command":"copilot","args":["--acp"]}]'
+bb provider list
+bb provider models acp-copilot
+```
+
+The setting takes effect immediately. Select **GitHub Copilot** when starting a BB thread. BB launches `copilot --acp` for you. Keep Copilot and the host daemon under the same operating-system account. For remote environments, install and authenticate Copilot on that remote host too. Run `bb guide providers` for BB's current custom-agent configuration reference.
+
+### Install a release
+
+```sh
+bb plugin install 'git:https://github.com/balazstasi/bb-plugin-copilot-aic-usage.git@v0.1.0' --yes
+```
+
+After the [BB Community marketplace submission](https://github.com/get-bb/marketplace) is merged, the plugin will also be available in BB's plugin store. Publishing a GitHub release alone does not add it to the store.
 
 ### One-command local installation
 
@@ -60,7 +101,7 @@ The supported `experimental_threadHeaderAction` slot places the badge in the **t
 
 The telemetry reader preserves `totalNanoAiu / 1_000_000_000` exactly, but the badge displays the nearest natural number using ordinary half-up rounding. For example, `1.123123` is displayed as `1 AIC`, `1.51` as `2 AIC`, and `10831717000` as `11 AIC`. Zero is displayed only after an actual checkpoint below `0.5 AIC`. Counts are cumulative for the Copilot session, including earlier turns if that session was resumed. They are not per-turn deltas or the sum of historical BB sessions.
 
-The hover details distinguish current-session premium requests from the monthly quota snapshot. Monthly quota can lag and may include other sessions. Missing fields read “Unavailable.” A checkpoint older than five minutes, a missing live process lock, or a disconnected BB realtime connection produces a stale state. An idle session can legitimately be stale. Checkpoint and monthly-snapshot timestamps are shown separately.
+The header shows only this session’s AIC. Hover details add **AIC used today on this host** (local midnight, every Copilot session directory still on disk whose event file was touched today) and the monthly **premium-request** quota. Today is a local sum of checkpoint deltas, not a GitHub invoice and not remaining AIC. A session that started before midnight contributes only the increase since the last pre-midnight checkpoint; if a scan is incomplete or unreadable, today is unavailable rather than a partial total. The shared host total refreshes at most 15 seconds after a read, and watched session changes invalidate it immediately. Monthly remaining is Copilot’s `premium_interactions` snapshot (used / entitlement, remaining count, remaining percentage, reset). Chat and completions snapshots exist in telemetry but are typically unlimited and are not shown. Missing fields read “Unavailable.” A checkpoint older than five minutes, a missing live process lock, or a disconnected BB realtime connection produces a stale state. An idle session can legitimately be stale. Checkpoint and monthly-snapshot timestamps are shown separately.
 
 ## Architecture and exact correlation
 
@@ -68,7 +109,7 @@ The hover details distinguish current-session premium requests from the monthly 
 2. It requests **only** the two latest `thread/identity` events, using server-side event-type filtering, descending sequence, and a limit. No conversation history is fetched.
 3. `thread/identity.data.providerThreadId` is the ACP `sessionId`: current BB ACP bridge source assigns the session/new or session/load ID and emits threadIdentity. The latest BB identity is authoritative, including after resume/reset/fork. It must be a UUID. Missing, invalid, or conflicting latest identities fail closed; there is no workspace/time heuristic and no fallback to an older session.
 4. Typed host RPC targets that environment’s enrolled host. `host.ts` reads only `~/.copilot/session-state/<exact-session-id>/events.jsonl` on that machine. No assumption equates the server machine with the Copilot machine.
-5. Each session directory gets a daemon-native filesystem watch. A bounded incremental reader extracts only checkpoint/quota fields. `inuse.<pid>.lock` plus process existence informs freshness, **never identity selection**. Workspace files and process environments are unnecessary and are not read.
+5. Each viewed session directory gets a daemon-native filesystem watch. A bounded incremental reader extracts only checkpoint/quota fields for **this session**. A separate bounded reverse scan of sibling UUID directories whose `events.jsonl` was touched today sums AIC used since local midnight. That today total is a distinct field; it never replaces the current session’s AIC. `inuse.<pid>.lock` plus process existence informs freshness, **never identity selection**. Workspace files and process environments are unnecessary and are not read.
 6. A usage change emits a validated host invalidation containing only thread/session IDs. The server checks the originating host and expected session before forwarding a thread-only realtime invalidation. The mounted header action refetches its typed snapshot.
 
 Each frontend pane renews its subscription every 30 seconds, recovering missed signals or host restarts. The host reconciles every 15 seconds, retries failed watches, and expires subscriptions after 90 seconds without reads. Up to 64 viewed threads per host worker and 256 server subscriptions are supported. Watches, timers, file handles, and worker leases are disposed on expiry/reload/disable. Multiple windows renew the same thread subscription without prematurely closing each other’s watch.
@@ -77,8 +118,8 @@ Each frontend pane renews its subscription every 30 seconds, recovering missed s
 
 This is a **full-trust BB plugin**, as host entries generally are; the code’s read restrictions are not an operating-system sandbox.
 
-- Reads local Copilot event files only on the explicitly resolved thread host. No writes to Copilot files, no Copilot subprocess, no organization metrics API, no external network requests, no credentials requested.
-- JSONL records are processed individually in memory and discarded. Only numeric usage, validated timestamps, explicitly named quota booleans, and session-correlation IDs cross module/RPC boundaries. Prompts, responses, reasoning, code, tool data, arbitrary fields, and raw parse errors are never returned, persisted, or logged.
+- Reads local Copilot event files only on the explicitly resolved thread host. The current session file supplies session AIC and quota. Sibling `~/.copilot/session-state/<uuid>/events.jsonl` files touched today are reverse-scanned for checkpoint nano-AIU/timestamps and `session.start` timestamps to compute today’s host AIC. No writes to Copilot files, no Copilot subprocess, no organization metrics API, no external network requests, no credentials requested.
+- JSONL records are processed individually in memory and discarded. Only numeric usage, validated timestamps, explicitly named quota booleans, and session-correlation IDs cross module/RPC boundaries. Other sessions contribute only a summed today AIC; their identifiers never leave the host scanner. Prompts, responses, reasoning, code, tool data, arbitrary fields, and raw parse errors are never returned, persisted, or logged.
 - Reads at most the newest **8 MiB** per reconciliation, in **64 KiB** chunks. Individual records/torn-line buffers are capped at **256 KiB**; oversized records are skipped to the next newline. A partial final line is held only in bounded volatile memory until completed.
 - Latest usage and read offsets exist only in memory. No plugin database, disk cache, analytics, telemetry upload, or usage logs are created. BB transports usage snapshots to its own authenticated frontend; realtime broadcasts carry only IDs.
 - Event files are opened with `O_NOFOLLOW`; symlink session directories are rejected. RPC callers supply a BB thread ID, never a path or host selection. Host RPC accepts only validated thread/UUID session identifiers.
@@ -107,21 +148,17 @@ npm pack --dry-run       # inspect the distributable
 The test suite runs the SDK public-import scanner and the official backend, host, and frontend harnesses. All committed fixtures are synthetic. See [VERIFICATION.md](VERIFICATION.md) for the actual validation and live-check record.
 
 - `server.ts`: thread/provider checks, environment-host routing, identity lookup, RPC/realtime.
-- `host.ts`, `src/monitor.ts`, `src/reader.ts`: host worker, watcher lifecycle, bounded incremental reading.
+- `host.ts`, `src/monitor.ts`, `src/reader.ts`, `src/daily.ts`: host worker, watcher lifecycle, bounded incremental reading, host-wide today AIC.
 - `src/model.ts`, `src/contract.ts`: strict wire schemas and typed contracts.
 - `src/telemetry.ts`, `src/identity.ts`: privacy projection, precision, exact selection.
 - `app.tsx`, `src/UsageBadge.tsx`: supported header slot and hover/focus UI.
 - `scripts/install-local.sh`: idempotent local build, verification, install, and reload workflow.
 - `tests/`: synthetic functional/privacy/lifecycle tests; `skills/`: operating guidance.
 
-## Publishing later
+## Releases and marketplace updates
 
-This repository has no configured remote and is not published. Before release, add your repository/bugs/homepage metadata and maintainer details, review the license, and add a screenshot of a synthetic/demo session (avoid capturing private conversations or account information). Screenshot placeholder: [docs/screenshots/README.md](docs/screenshots/README.md).
+The plugin uses immutable Git tags (`v0.1.0`, `v0.1.1`, and so on). BB builds Git installs from the source and lockfile. Run `npm run check` and `npm run format:check` before tagging a release, then publish the tag and its GitHub release notes.
 
-For a Git-based BB install, publish the source, lockfile, manifest, license, and README. BB runs production dependency installation and builds declared entries; runtime dependencies are in `dependencies`, and SDK/React/shim declarations and test tools are development dependencies. The SDK root helpers used by the host are bundled by BB’s host builder.
-
-For npm, run `bb plugin build` first, inspect `npm pack --dry-run`, and publish the generated `dist/` artifacts with their matching metadata. `files` includes those artifacts even though `dist/` is Git-ignored. Check the neutral package name’s availability before publishing. Do not rename the package after building without rebuilding: artifact identity must match the manifest.
-
-BB Community marketplace submission is a separate opt-in review; a public repository alone does not list the plugin. Follow the installed `submit-a-plugin` skill when ready. No external publication or marketplace submission is performed by this checkout’s setup.
+The [BB Community marketplace](https://github.com/get-bb/marketplace) stores the listing; the code stays in this repository. Its submission PR includes an entry, icon, screenshot, and a copy of `PLUGIN_OVERVIEW.md`. The entry tracks `^0.1.0`, so compatible patch releases do not need a new listing PR. Changes to the source, branding, description, or screenshots do.
 
 MIT licensed.

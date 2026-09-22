@@ -9,6 +9,7 @@ import {
   type Usage,
   type hostSignals,
 } from "./contract";
+import { readTodayAic } from "./daily";
 import { SessionReader } from "./reader";
 
 type Context = ExperimentalHostRpcContext<typeof hostSignals>;
@@ -33,6 +34,16 @@ export class UsageMonitor {
   private stopped = false;
   private reconciling = false;
   private lease;
+  private today?: { expires: number; value: ReturnType<typeof readTodayAic> };
+  private readToday() {
+    if (!this.today || Date.now() >= this.today.expires) {
+      this.today = {
+        expires: Date.now() + 15_000,
+        value: readTodayAic(this.root),
+      };
+    }
+    return this.today.value;
+  }
   constructor(
     private root: string,
     private context: Context,
@@ -65,6 +76,7 @@ export class UsageMonitor {
     if (entry && entry.target.sessionId !== target.sessionId) {
       await this.remove(entry);
       entry = undefined;
+      if (this.stopped) return emptyUsage("host-unavailable");
     }
     if (!entry) {
       if (this.entries.size >= 64) return emptyUsage("capacity");
@@ -99,6 +111,7 @@ export class UsageMonitor {
               void watch?.dispose().catch(() => {});
             }
             if (entry.flight) await entry.flight;
+            this.today = undefined;
             await this.refresh(entry);
           },
         );
@@ -117,11 +130,14 @@ export class UsageMonitor {
     if (entry.removed || this.stopped)
       return Promise.resolve(emptyUsage("host-unavailable"));
     entry.flight = (async () => {
-      const value = await entry.reader.read();
+      const [value, today] = await Promise.all([
+        entry.reader.read(),
+        this.readToday(),
+      ]);
+      const next = { ...value, todayAic: today.aic, todayAt: today.at };
       const changed =
-        entry.value !== undefined &&
-        signature(entry.value) !== signature(value);
-      entry.value = value;
+        entry.value !== undefined && signature(entry.value) !== signature(next);
+      entry.value = next;
       if (changed && !entry.removed && !this.stopped) {
         try {
           await this.context.experimental_emitSignal("changed", entry.target);
@@ -129,7 +145,7 @@ export class UsageMonitor {
           /* heartbeat recovers */
         }
       }
-      return value;
+      return next;
     })().finally(() => {
       entry.flight = undefined;
     });

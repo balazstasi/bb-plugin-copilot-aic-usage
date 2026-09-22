@@ -69,7 +69,8 @@
     "README.md",
     "LICENSE",
     "docs",
-    "VERIFICATION.md"
+    "VERIFICATION.md",
+    "PLUGIN_OVERVIEW.md"
   ],
   "scripts": {
     "build": "bb plugin build",
@@ -85,5 +86,13 @@
     "copilot",
     "usage",
     "ai-credits"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/balazstasi/bb-plugin-copilot-aic-usage.git"
+  },
+  "homepage": "https://github.com/balazstasi/bb-plugin-copilot-aic-usage#readme",
+  "bugs": {
+    "url": "https://github.com/balazstasi/bb-plugin-copilot-aic-usage/issues"
+  }
 }

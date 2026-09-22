@@ -26,6 +26,8 @@ export const quota = () =>
           resetDate: "2026-10-01T00:00:00Z",
           usageAllowedWithExhaustedQuota: false,
           overageAllowedWithExhaustedQuota: true,
+          overage: 0,
+          isUnlimitedEntitlement: false,
           secret: "PRIVATE_SENTINEL",
         },
       },
@@ -35,9 +37,11 @@ export const liveUsage = (): Usage => ({
   ...emptyUsage("ok"),
   status: "live",
   aic: "10.831717",
+  todayAic: "32.216961",
   premiumRequests: 8,
   checkpointAt: Date.now(),
   quotaAt: Date.now(),
+  todayAt: Date.now(),
   quota: {
     remainingPercentage: 23,
     resetDate: "2026-10-01T00:00:00.000Z",
@@ -45,5 +49,16 @@ export const liveUsage = (): Usage => ({
     entitlementRequests: 90,
     usageAllowedWithExhaustedQuota: false,
     overageAllowedWithExhaustedQuota: true,
+    overage: 0,
+    isUnlimitedEntitlement: false,
   },
 });
+export const sessionStart = (
+  at = new Date().toISOString(),
+  extra: Record<string, unknown> = {},
+) =>
+  JSON.stringify({
+    type: "session.start",
+    timestamp: at,
+    data: { prompt: "PRIVATE_SENTINEL", ...extra },
+  }) + "\n";

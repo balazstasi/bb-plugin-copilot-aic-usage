@@ -25,11 +25,14 @@ describe("header usage UI", () => {
     const view = render(<UsageBadge usage={liveUsage()} />);
     const button = view.getByRole("button");
     expect(button.textContent).toBe("11 AIC");
+    expect(button.textContent).not.toContain("32");
     fireEvent.mouseEnter(button.parentElement!);
     const tooltip = view.getByRole("tooltip");
-    expect(tooltip.textContent).toContain("Premium requests8");
-    expect(tooltip.textContent).toContain("23%");
+    expect(tooltip.textContent).toContain("Used today on this host32 AIC");
+    expect(tooltip.textContent).toContain("Premium used this month69 / 90");
+    expect(tooltip.textContent).toContain("21 · 23%");
     expect(tooltip.textContent).toContain("2026-10-01");
+    expect(tooltip.textContent).toContain("does not publish remaining AIC");
     fireEvent.keyDown(button, { key: "Escape" });
     expect(view.queryByRole("tooltip")).toBeNull();
     fireEvent.focus(button);

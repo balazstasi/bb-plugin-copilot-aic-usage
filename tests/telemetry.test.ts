@@ -39,6 +39,8 @@ describe("privacy boundary and conversion", () => {
         remainingPercentage: 23,
         usageAllowedWithExhaustedQuota: false,
         overageAllowedWithExhaustedQuota: true,
+        overage: 0,
+        isUnlimitedEntitlement: false,
       },
     });
     expect(JSON.stringify(events)).not.toMatch(

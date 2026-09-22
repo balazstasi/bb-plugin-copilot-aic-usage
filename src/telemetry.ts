@@ -17,11 +17,8 @@ function timestamp(v: unknown): number | null {
 
 /** Exact decimal division, including sub-credit values; unsafe JSON numbers fail closed. */
 export function nanoToAic(value: unknown): string | null {
-  if (typeof value === "number" && (!Number.isSafeInteger(value) || value < 0))
-    return null;
-  if (typeof value !== "number" && typeof value !== "string") return null;
-  const digits = String(value);
-  if (!/^\d{1,30}$/.test(digits)) return null;
+  const digits = nanoDigits(value);
+  if (digits === null) return null;
   const nano = BigInt(digits);
   const fraction = (nano % 1_000_000_000n)
     .toString()
@@ -38,6 +35,17 @@ export type UsageEvent =
       at: number | null;
     }
   | { kind: "quota"; quota: Quota; at: number | null };
+
+export type DailyEvent =
+  | { kind: "checkpoint"; nano: bigint; at: number | null }
+  | { kind: "start"; at: number | null };
+
+function nanoDigits(value: unknown): string | null {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0)
+    return String(value);
+  if (typeof value === "string" && /^\d{1,30}$/.test(value)) return value;
+  return null;
+}
 
 /** Privacy boundary: no event object, text, errors, or unknown fields leave this function. */
 export function parseUsageLine(line: string): UsageEvent | null {
@@ -79,8 +87,27 @@ export function parseUsageLine(line: string): UsageEvent | null {
         overageAllowedWithExhaustedQuota: bool(
           q.overageAllowedWithExhaustedQuota,
         ),
+        overage: count(q.overage),
+        isUnlimitedEntitlement: bool(q.isUnlimitedEntitlement),
       },
     };
+  } catch {
+    return null;
+  }
+}
+
+/** Privacy boundary for host-wide today totals: checkpoint nano/time and session start time only. */
+export function parseDailyLine(line: string): DailyEvent | null {
+  if (Buffer.byteLength(line) > 256 * 1024) return null;
+  try {
+    const event = record(JSON.parse(line));
+    const at = timestamp(event.timestamp);
+    if (event.type === "session.start") return { kind: "start", at };
+    if (event.type !== "session.usage_checkpoint") return null;
+    const digits = nanoDigits(record(event.data).totalNanoAiu);
+    return digits === null
+      ? null
+      : { kind: "checkpoint", nano: BigInt(digits), at };
   } catch {
     return null;
   }

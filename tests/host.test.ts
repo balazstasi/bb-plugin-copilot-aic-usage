@@ -53,7 +53,7 @@ describe("host RPC, watch lifecycle and concurrent sessions", () => {
         threadId,
         sessionId: sessionA,
       }),
-    ).toMatchObject({ aic: "1" });
+    ).toMatchObject({ aic: "1", todayAic: "3" });
     await appendFile(
       join(root, sessionA, "events.jsonl"),
       checkpoint(3000000000),
@@ -71,6 +71,21 @@ describe("host RPC, watch lifecycle and concurrent sessions", () => {
     expect(JSON.stringify(harness.experimental_getSignals())).not.toContain(
       "PRIVATE",
     );
+  });
+  it("refreshes the shared daily total after a watched append", async () => {
+    const { harness, watches } = await setup();
+    await harness.experimental_call("read", { threadId, sessionId: sessionA });
+    await appendFile(
+      join(root, sessionA, "events.jsonl"),
+      checkpoint(4_000_000_000),
+    );
+    await watches.get(join(root, sessionA))!({ kind: "rescan-required" });
+    expect(
+      await harness.experimental_call("read", {
+        threadId,
+        sessionId: sessionA,
+      }),
+    ).toMatchObject({ aic: "4", todayAic: "6" });
   });
   it("isolates multiple threads and replaces the watch when session identity changes", async () => {
     const { harness, watches, disposed } = await setup();

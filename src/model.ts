@@ -4,6 +4,10 @@ export const threadIdSchema = z.string().regex(/^thr_[a-zA-Z0-9_-]{1,100}$/);
 // Session IDs are used as a single path component, never as an arbitrary path.
 export const sessionIdSchema = z.string().uuid();
 const count = z.number().finite().nonnegative();
+const aic = z
+  .string()
+  .regex(/^\d+(\.\d{1,9})?$/)
+  .nullable();
 export const quotaSchema = z
   .object({
     usedRequests: count.nullable(),
@@ -12,6 +16,8 @@ export const quotaSchema = z
     resetDate: z.string().datetime({ offset: true }).nullable(),
     usageAllowedWithExhaustedQuota: z.boolean().nullable(),
     overageAllowedWithExhaustedQuota: z.boolean().nullable(),
+    overage: count.nullable(),
+    isUnlimitedEntitlement: z.boolean().nullable(),
   })
   .strict();
 export const usageSchema = z
@@ -32,14 +38,13 @@ export const usageSchema = z
       "capacity",
       "connection-lost",
     ]),
-    aic: z
-      .string()
-      .regex(/^\d+(\.\d{1,9})?$/)
-      .nullable(),
+    aic,
+    todayAic: aic,
     premiumRequests: count.nullable(),
     quota: quotaSchema.nullable(),
     checkpointAt: z.number().finite().nonnegative().nullable(),
     quotaAt: z.number().finite().nonnegative().nullable(),
+    todayAt: z.number().finite().nonnegative().nullable(),
     checkedAt: z.number().finite().nonnegative(),
   })
   .strict();
@@ -53,10 +58,12 @@ export const emptyUsage = (
   status: "unavailable",
   reason,
   aic: null,
+  todayAic: null,
   premiumRequests: null,
   quota: null,
   checkpointAt: null,
   quotaAt: null,
+  todayAt: null,
   checkedAt: Date.now(),
 });
 export const targetSchema = z
